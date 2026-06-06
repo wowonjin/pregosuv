@@ -1,0 +1,48 @@
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+
+function getPrivateKey() {
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  return privateKey?.trim().replace(/\\n/g, "\n");
+}
+
+function requiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function optionalEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+export function getFirebaseAdminApp() {
+  if (getApps().length) return getApps()[0];
+
+  return initializeApp({
+    credential: cert({
+      projectId: requiredEnv("FIREBASE_PROJECT_ID"),
+      clientEmail: requiredEnv("FIREBASE_CLIENT_EMAIL"),
+      privateKey: getPrivateKey() ?? requiredEnv("FIREBASE_PRIVATE_KEY"),
+    }),
+    storageBucket: optionalEnv(
+      "FIREBASE_STORAGE_BUCKET",
+      "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"
+    ),
+  });
+}
+
+export const adminAuth = () => getAuth(getFirebaseAdminApp());
+export const adminDb = () => getFirestore(getFirebaseAdminApp());
+export const adminStorage = () => getStorage(getFirebaseAdminApp());
+
+export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@gmail.com").trim();
+export const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD ?? "admin").trim();
